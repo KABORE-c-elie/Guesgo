@@ -49,4 +49,4 @@ final class MovieRepositoryProvider
   }
 }
 
-String _$movieRepositoryHash() => r'5a1444894e769b2fb456dbe0f36bdddc36716bb7';
+String _$movieRepositoryHash() => r'35709ba5fd71287fa797dce82793d6b96d2186d7';

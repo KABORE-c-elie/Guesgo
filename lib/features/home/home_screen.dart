@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:guesgo/app/theme/theme.dart';
 import 'package:guesgo/core/config/app_config.dart';
+import 'package:guesgo/core/extensions/context_x.dart';
 import 'package:guesgo/core/l10n/app_strings.dart';
 import 'package:guesgo/core/widgets/design_system.dart';
 import 'package:guesgo/features/home/home_controller.dart';
@@ -22,16 +23,35 @@ class HomeScreen extends ConsumerWidget {
           ..invalidate(animeMoviesProvider);
         await ref.read(trendingMoviesProvider.future);
       },
-      child: const CustomScrollView(
+      child: CustomScrollView(
         slivers: [
-          SliverToBoxAdapter(
-            child: ScreenHeader(
-              title: AppStrings.navHome,
-              eyebrow: 'Populaires en ce moment',
-            ),
+          AppTopBar(
+            title: AppStrings.navHome,
+            subtitle: 'Populaires en ce moment',
+            showLogo: true,
+            actions: [
+              IconActionButton(
+                icon: Icons.notifications_none_rounded,
+                tooltip: 'Notifications',
+                onPressed: () => context.showToast(
+                  'Bientôt disponible',
+                  icon: Icons.info_outline_rounded,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              IconActionButton(
+                icon: Icons.tune_rounded,
+                tooltip: 'Filtrer',
+                onPressed: () => context.showToast(
+                  'Bientôt disponible',
+                  icon: Icons.info_outline_rounded,
+                ),
+              ),
+            ],
           ),
-          _MovieFeed(),
-          SliverPadding(
+          const SliverToBoxAdapter(child: OfflineBanner()),
+          const _MovieFeed(),
+          const SliverPadding(
             padding: EdgeInsets.only(bottom: AppSizes.navBarInset),
           ),
         ],
@@ -61,6 +81,7 @@ class _MovieFeed extends ConsumerWidget {
     return AsyncValueWidget<List<Movie>>(
       value: trending,
       sliver: true,
+      loading: const SliverToBoxAdapter(child: _FeedSkeleton()),
       onRetry: () => ref.invalidate(trendingMoviesProvider),
       data: (trendingMovies) {
         final sections = <(String, List<Movie>)>[
@@ -87,6 +108,56 @@ class _MovieFeed extends ConsumerWidget {
           ],
         );
       },
+    );
+  }
+}
+
+/// Two placeholder rails, shaped like the real feed — a skeleton reads as
+/// "this is where content will land" in a way a centred spinner never does.
+class _FeedSkeleton extends StatelessWidget {
+  const _FeedSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.symmetric(horizontal: AppSpacing.gutter),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Skeleton(width: 120, height: 20),
+          SizedBox(height: AppSpacing.lg),
+          _RailSkeleton(),
+          SizedBox(height: AppSpacing.xxl),
+          Skeleton(width: 100, height: 20),
+          SizedBox(height: AppSpacing.lg),
+          _RailSkeleton(),
+        ],
+      ),
+    );
+  }
+}
+
+class _RailSkeleton extends StatelessWidget {
+  const _RailSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 210,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: 4,
+        separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.md),
+        itemBuilder: (_, _) => const SizedBox(
+          width: 140,
+          child: Skeleton(
+            width: double.infinity,
+            height: double.infinity,
+            radius: AppRadius.lg,
+          ),
+        ),
+      ),
     );
   }
 }

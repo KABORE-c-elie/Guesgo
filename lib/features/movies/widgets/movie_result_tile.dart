@@ -51,8 +51,8 @@ class MovieResultTile extends ConsumerWidget {
                 ),
               ),
               Positioned(
-                top: 4,
-                right: 4,
+                bottom: AppSpacing.xs,
+                right: AppSpacing.xs,
                 child: SaveMovieButton(
                   saved: saved,
                   dense: true,

@@ -1,6 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:guesgo/core/config/app_config.dart';
+import 'package:guesgo/core/network/auth_interceptor.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 part 'dio_client.g.dart';
 
@@ -9,7 +11,7 @@ part 'dio_client.g.dart';
 @Riverpod(keepAlive: true)
 Dio tmdbDio(Ref ref) {
   final config = ref.watch(appConfigProvider);
-  return Dio(
+  final dio = Dio(
     BaseOptions(
       baseUrl: config.tmdbBaseUrl,
       queryParameters: {'api_key': config.tmdbApiKey, 'language': 'fr-FR'},
@@ -17,4 +19,12 @@ Dio tmdbDio(Ref ref) {
       receiveTimeout: const Duration(seconds: 10),
     ),
   );
+
+  // Guarded: `Supabase.instance` throws if `Supabase.initialize` was never
+  // called (a dev environment with no Supabase config — see main.dart).
+  if (config.hasSupabaseConfig) {
+    dio.interceptors.add(AuthInterceptor(Supabase.instance.client));
+  }
+
+  return dio;
 }

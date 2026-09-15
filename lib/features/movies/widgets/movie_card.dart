@@ -49,7 +49,7 @@ class MovieCard extends ConsumerWidget {
                 ),
                 if (movie.voteAverage > 0)
                   Positioned(
-                    top: AppSpacing.sm,
+                    bottom: AppSpacing.sm,
                     right: AppSpacing.sm,
                     child: AppBadge(
                       label: movie.voteAverage.toStringAsFixed(1),
@@ -59,7 +59,7 @@ class MovieCard extends ConsumerWidget {
                     ),
                   ),
                 Positioned(
-                  top: AppSpacing.sm,
+                  bottom: AppSpacing.sm,
                   left: AppSpacing.sm,
                   child: SaveMovieButton(
                     saved: saved,

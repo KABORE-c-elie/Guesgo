@@ -20,7 +20,7 @@ class ProfileScreen extends ConsumerWidget {
     final userAsync = ref.watch(authStateProvider);
 
     return userAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const _ProfileSkeleton(),
       error: (error, _) => Center(
         child: ErrorStateView(
           message: error is Failure ? error.message : AppStrings.errorGeneric,
@@ -29,6 +29,47 @@ class ProfileScreen extends ConsumerWidget {
       ),
       data: (user) =>
           user == null ? const _SignedOutView() : _SignedInView(user: user),
+    );
+  }
+}
+
+/// Shaped like the identity card + stats row it's about to become, so the
+/// (usually brief) wait for the auth stream's first event doesn't flash a
+/// bare spinner in the middle of the screen.
+class _ProfileSkeleton extends StatelessWidget {
+  const _ProfileSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomScrollView(
+      slivers: [
+        const AppTopBar(title: AppStrings.navProfile),
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.gutter,
+            AppSpacing.lg,
+            AppSpacing.gutter,
+            AppSizes.navBarInset,
+          ),
+          sliver: SliverList.list(
+            children: const [
+              Skeleton(
+                width: double.infinity,
+                height: 132,
+                radius: AppRadius.xxl,
+              ),
+              SizedBox(height: AppSpacing.xl),
+              Row(
+                children: [
+                  Expanded(child: Skeleton(height: 92, radius: AppRadius.lg)),
+                  SizedBox(width: AppSpacing.md),
+                  Expanded(child: Skeleton(height: 92, radius: AppRadius.lg)),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -43,9 +84,7 @@ class _SignedOutView extends StatelessWidget {
   Widget build(BuildContext context) {
     return CustomScrollView(
       slivers: [
-        const SliverToBoxAdapter(
-          child: ScreenHeader(title: AppStrings.navProfile),
-        ),
+        const AppTopBar(title: AppStrings.navProfile),
         SliverFillRemaining(
           hasScrollBody: false,
           child: EmptyStateView(
@@ -102,70 +141,84 @@ class _SignedInView extends ConsumerWidget {
         (themeMode == ThemeMode.system &&
             MediaQuery.platformBrightnessOf(context) == Brightness.dark);
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.gutter,
-        AppSpacing.lg,
-        AppSpacing.gutter,
-        AppSizes.navBarInset,
-      ),
-      children: [
-        _IdentityCard(user: user),
-        const SizedBox(height: AppSpacing.xl),
-        _Stats(savedCount: savedCount, emailConfirmed: user.emailConfirmed),
-        const SizedBox(height: AppSpacing.xxl),
-        const SectionLabel('Préférences'),
-        const SizedBox(height: AppSpacing.md),
-        AppSurface(
-          padding: EdgeInsets.zero,
-          elevation: SurfaceElevation.flat,
-          child: SwitchListTile.adaptive(
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.lg,
-            ),
-            secondary: Icon(Icons.dark_mode_outlined, color: t.textSecondary),
-            title: Text('Mode sombre', style: text.titleMedium),
-            value: isDark,
-            onChanged: (_) =>
-                ref.read(themeModeControllerProvider.notifier).toggle(context),
+    return CustomScrollView(
+      slivers: [
+        const AppTopBar(title: AppStrings.navProfile),
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.gutter,
+            AppSpacing.lg,
+            AppSpacing.gutter,
+            AppSizes.navBarInset,
           ),
-        ),
-        const SizedBox(height: AppSpacing.xxl),
-        const SectionLabel('Assistance'),
-        const SizedBox(height: AppSpacing.md),
-        _MenuGroup(
-          items: [
-            _MenuItem(
-              icon: Icons.badge_outlined,
-              label: 'Modifier le profil',
-              onTap: () => context.showToast(
-                'Bientôt disponible',
-                icon: Icons.info_outline_rounded,
+          sliver: SliverList.list(
+            children: [
+              _IdentityCard(user: user),
+              const SizedBox(height: AppSpacing.xl),
+              _Stats(
+                savedCount: savedCount,
+                emailConfirmed: user.emailConfirmed,
               ),
-            ),
-            _MenuItem(
-              icon: Icons.help_outline_rounded,
-              label: "Centre d'aide",
-              onTap: () => context.showToast(
-                'Bientôt disponible',
-                icon: Icons.info_outline_rounded,
+              const SizedBox(height: AppSpacing.xxl),
+              const SectionLabel('Préférences'),
+              const SizedBox(height: AppSpacing.md),
+              AppSurface(
+                padding: EdgeInsets.zero,
+                elevation: SurfaceElevation.flat,
+                child: SwitchListTile.adaptive(
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.lg,
+                  ),
+                  secondary: Icon(
+                    Icons.dark_mode_outlined,
+                    color: t.textSecondary,
+                  ),
+                  title: Text('Mode sombre', style: text.titleMedium),
+                  value: isDark,
+                  onChanged: (_) => ref
+                      .read(themeModeControllerProvider.notifier)
+                      .toggle(context),
+                ),
               ),
-            ),
-            _MenuItem(
-              icon: Icons.info_outline_rounded,
-              label: 'À propos',
-              onTap: () => context.showToast(
-                'Bientôt disponible',
-                icon: Icons.info_outline_rounded,
+              const SizedBox(height: AppSpacing.xxl),
+              const SectionLabel('Assistance'),
+              const SizedBox(height: AppSpacing.md),
+              _MenuGroup(
+                items: [
+                  _MenuItem(
+                    icon: Icons.badge_outlined,
+                    label: 'Modifier le profil',
+                    onTap: () => context.showToast(
+                      'Bientôt disponible',
+                      icon: Icons.info_outline_rounded,
+                    ),
+                  ),
+                  _MenuItem(
+                    icon: Icons.help_outline_rounded,
+                    label: "Centre d'aide",
+                    onTap: () => context.showToast(
+                      'Bientôt disponible',
+                      icon: Icons.info_outline_rounded,
+                    ),
+                  ),
+                  _MenuItem(
+                    icon: Icons.info_outline_rounded,
+                    label: 'À propos',
+                    onTap: () => context.showToast(
+                      'Bientôt disponible',
+                      icon: Icons.info_outline_rounded,
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.xxl),
-        AppButton.secondary(
-          label: 'Se déconnecter',
-          icon: Icons.logout_rounded,
-          onPressed: () => _signOut(context, ref),
+              const SizedBox(height: AppSpacing.xxl),
+              AppButton.secondary(
+                label: 'Se déconnecter',
+                icon: Icons.logout_rounded,
+                onPressed: () => _signOut(context, ref),
+              ),
+            ],
+          ),
         ),
       ],
     );

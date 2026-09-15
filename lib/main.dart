@@ -14,6 +14,9 @@ void main() async {
   final savedMoviesBox = await Hive.openBox<Map<dynamic, dynamic>>(
     savedMoviesBoxName,
   );
+  final movieCacheBox = await Hive.openBox<Map<dynamic, dynamic>>(
+    movieCacheBoxName,
+  );
 
   final config = AppConfig.fromFlavor(Flavor.fromEnvironment());
 
@@ -35,6 +38,7 @@ void main() async {
       overrides: [
         appConfigProvider.overrideWithValue(config),
         savedMoviesBoxProvider.overrideWithValue(savedMoviesBox),
+        movieCacheBoxProvider.overrideWithValue(movieCacheBox),
       ],
       child: const GuesgoApp(),
     ),

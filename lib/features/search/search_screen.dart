@@ -24,9 +24,8 @@ class SearchScreen extends ConsumerWidget {
 
     return CustomScrollView(
       slivers: [
-        const SliverToBoxAdapter(
-          child: ScreenHeader(title: AppStrings.navSearch),
-        ),
+        const AppTopBar(title: AppStrings.navSearch),
+        const SliverToBoxAdapter(child: OfflineBanner()),
         const SliverPadding(
           padding: EdgeInsets.fromLTRB(
             AppSpacing.gutter,
@@ -66,6 +65,15 @@ class _Results extends ConsumerWidget {
     return AsyncValueWidget<List<Movie>>(
       value: results,
       sliver: true,
+      loading: SliverPadding(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.gutter),
+        sliver: SliverList.separated(
+          itemCount: 4,
+          separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.md),
+          itemBuilder: (_, _) =>
+              const Skeleton(height: 108, radius: AppRadius.lg),
+        ),
+      ),
       onRetry: () => ref.invalidate(movieSearchResultsProvider),
       isEmpty: (list) => list.isEmpty,
       empty: SliverFillRemaining(

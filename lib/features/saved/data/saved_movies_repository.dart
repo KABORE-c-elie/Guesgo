@@ -1,4 +1,5 @@
 import 'package:guesgo/core/storage/hive_boxes.dart';
+import 'package:guesgo/core/storage/hive_json.dart';
 import 'package:guesgo/features/movies/domain/movie.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -19,9 +20,8 @@ class SavedMoviesRepository {
 
   final Box<Map<dynamic, dynamic>> _box;
 
-  List<Movie> all() => _box.values
-      .map((json) => Movie.fromJson(Map<String, dynamic>.from(json)))
-      .toList();
+  List<Movie> all() =>
+      _box.values.map((json) => Movie.fromJson(deepJsonMap(json))).toList();
 
   bool isSaved(int movieId) => _box.containsKey(movieId.toString());
 
@@ -29,4 +29,6 @@ class SavedMoviesRepository {
       _box.put(movie.id.toString(), movie.toJson());
 
   Future<void> remove(int movieId) => _box.delete(movieId.toString());
+
+  Future<void> clear() => _box.clear();
 }

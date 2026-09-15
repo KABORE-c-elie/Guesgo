@@ -23,4 +23,9 @@ class SavedMovies extends _$SavedMovies {
     }
     state = repository.all();
   }
+
+  Future<void> clearAll() async {
+    await ref.read(savedMoviesRepositoryProvider).clear();
+    state = const [];
+  }
 }

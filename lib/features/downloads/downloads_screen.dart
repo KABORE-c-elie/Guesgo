@@ -15,6 +15,18 @@ import 'package:guesgo/features/saved/saved_controller.dart';
 class DownloadsScreen extends ConsumerWidget {
   const DownloadsScreen({super.key});
 
+  Future<void> _clearAll(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showConfirmSheet(
+      context,
+      icon: Icons.delete_sweep_outlined,
+      title: 'Vider la liste',
+      message: 'Tous les films enregistrés seront retirés. Cette action est irréversible.',
+      confirmLabel: 'Vider',
+    );
+    if (!confirmed) return;
+    await ref.read(savedMoviesProvider.notifier).clearAll();
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final saved = ref.watch(savedMoviesProvider);
@@ -22,11 +34,18 @@ class DownloadsScreen extends ConsumerWidget {
 
     return CustomScrollView(
       slivers: [
-        const SliverToBoxAdapter(
-          child: ScreenHeader(
-            title: AppStrings.navDownloads,
-            eyebrow: 'Disponible hors-ligne',
-          ),
+        AppTopBar(
+          title: AppStrings.navDownloads,
+          subtitle: 'Disponible hors-ligne',
+          actions: saved.isEmpty
+              ? const []
+              : [
+                  IconActionButton(
+                    icon: Icons.delete_sweep_outlined,
+                    tooltip: 'Vider la liste',
+                    onPressed: () => _clearAll(context, ref),
+                  ),
+                ],
         ),
         if (saved.isEmpty)
           const SliverFillRemaining(

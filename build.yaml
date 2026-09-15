@@ -1,0 +1,10 @@
+targets:
+  $default:
+    builders:
+      json_serializable:
+        options:
+          # Without this, `Movie.toJson()['genres']` stays a list of raw
+          # `Genre` objects instead of JSON maps — fine for `jsonEncode`
+          # (which reflectively calls `.toJson()`), but Hive's binary writer
+          # needs literal primitives/maps and throws on the raw objects.
+          explicit_to_json: true
