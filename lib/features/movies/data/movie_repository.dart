@@ -74,13 +74,18 @@ class MovieRepository {
     () => _fetch('/search/movie', {'query': query, 'page': page}),
   );
 
-  AsyncResult<Movie> fetchDetail(int id) => _fetchOneCached('detail_$id', () async {
-    final response = await _dio.get<Map<String, dynamic>>(
-      '/movie/$id',
-      queryParameters: const {},
-    );
-    return Movie.fromJson(response.data!);
-  });
+  AsyncResult<Movie> fetchDetail(int id) => _fetchCached<Movie>(
+    'detail_$id',
+    request: () async {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/movie/$id',
+        queryParameters: const {},
+      );
+      return Movie.fromJson(response.data!);
+    },
+    encode: (movie) => {'movie': movie.toJson()},
+    decode: (json) => Movie.fromJson(json['movie'] as Map<String, dynamic>),
+  );
 
   Future<List<Movie>> _fetch(
     String path,
@@ -95,51 +100,41 @@ class MovieRepository {
     return results.map(Movie.fromJson).toList();
   }
 
-  /// Runs [request]; on success, caches the list under [cacheKey] and
-  /// returns it. On failure, serves the cached list for that key if one
-  /// exists — otherwise surfaces the mapped [Failure].
   AsyncResult<List<Movie>> _fetchListCached(
     String cacheKey,
     Future<List<Movie>> Function() request,
-  ) async {
+  ) => _fetchCached<List<Movie>>(
+    cacheKey,
+    request: request,
+    encode: (movies) => {
+      'movies': movies.map((movie) => movie.toJson()).toList(),
+    },
+    decode: (json) => (json['movies'] as List)
+        .cast<Map<String, dynamic>>()
+        .map(Movie.fromJson)
+        .toList(),
+  );
+
+  /// Runs [request]; on success, caches the result under [cacheKey]
+  /// (shaped by [encode]) and returns it. On failure, decodes and serves
+  /// that cache entry if one exists (via [decode]) — otherwise surfaces
+  /// the mapped [Failure]. Shared by every fetch method so "try network,
+  /// fall back to cache" is written exactly once regardless of whether
+  /// the endpoint returns a list or a single movie.
+  AsyncResult<T> _fetchCached<T>(
+    String cacheKey, {
+    required Future<T> Function() request,
+    required Map<String, dynamic> Function(T value) encode,
+    required T Function(Map<String, dynamic> json) decode,
+  }) async {
     try {
-      final movies = await request();
-      await _cache.put(cacheKey, {
-        'movies': movies.map((movie) => movie.toJson()).toList(),
-      });
-      return Ok(movies);
+      final value = await request();
+      await _cache.put(cacheKey, encode(value));
+      return Ok(value);
     } catch (error, stackTrace) {
-      final cached = _cachedMovies(cacheKey);
-      if (cached != null) return Ok(cached);
+      final raw = _cache.get(cacheKey);
+      if (raw != null) return Ok(decode(deepJsonMap(raw)));
       return Err(ErrorMapper.fromAny(error, stackTrace));
     }
-  }
-
-  AsyncResult<Movie> _fetchOneCached(
-    String cacheKey,
-    Future<Movie> Function() request,
-  ) async {
-    try {
-      final movie = await request();
-      await _cache.put(cacheKey, {'movie': movie.toJson()});
-      return Ok(movie);
-    } catch (error, stackTrace) {
-      final cached = _cachedMovie(cacheKey);
-      if (cached != null) return Ok(cached);
-      return Err(ErrorMapper.fromAny(error, stackTrace));
-    }
-  }
-
-  List<Movie>? _cachedMovies(String cacheKey) {
-    final raw = _cache.get(cacheKey);
-    if (raw == null) return null;
-    final list = (raw['movies'] as List).cast<Map<dynamic, dynamic>>();
-    return list.map((json) => Movie.fromJson(deepJsonMap(json))).toList();
-  }
-
-  Movie? _cachedMovie(String cacheKey) {
-    final raw = _cache.get(cacheKey);
-    if (raw == null) return null;
-    return Movie.fromJson(deepJsonMap(raw['movie'] as Map));
   }
 }

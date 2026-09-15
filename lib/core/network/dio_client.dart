@@ -23,7 +23,10 @@ Dio tmdbDio(Ref ref) {
   // Guarded: `Supabase.instance` throws if `Supabase.initialize` was never
   // called (a dev environment with no Supabase config — see main.dart).
   if (config.hasSupabaseConfig) {
-    dio.interceptors.add(AuthInterceptor(Supabase.instance.client));
+    final interceptor =
+        AuthInterceptor(SupabaseAuthTokenProvider(Supabase.instance.client))
+          ..dio = dio;
+    dio.interceptors.add(interceptor);
   }
 
   return dio;

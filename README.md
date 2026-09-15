@@ -65,24 +65,31 @@ pour l'injection de dépendances et la gestion d'état asynchrone
 | [TMDB](https://developer.themoviedb.org/reference/intro/getting-started) | Films populaires/tendance/mieux notés, recherche, détail, genres |
 | [Supabase Auth](https://supabase.com/docs/guides/auth) | Authentification par email/mot de passe (JWT géré par le SDK, refresh automatique) |
 
-### Intercepteur d'authentification
+### Intercepteur d'authentification & refresh token
 
-`lib/core/network/auth_interceptor.dart` — un `Interceptor` Dio qui attache
-le token Supabase de l'utilisateur connecté (`Authorization: Bearer <jwt>`)
-à chaque requête sortante. TMDB n'en a pas besoin (API publique par clé),
-mais l'intercepteur est câblé au niveau du client Dio pour que n'importe
-quel futur appel à un backend authentifié (Edge Function Supabase, etc.)
-hérite automatiquement du token, sans qu'aucun site d'appel n'ait à y
-penser.
+`lib/core/network/auth_interceptor.dart` — un `Interceptor` Dio à deux
+responsabilités explicites :
 
-### Refresh token
+1. **`onRequest`** attache le token de l'utilisateur connecté
+   (`Authorization: Bearer <jwt>`) à chaque requête sortante.
+2. **`onError`** intercepte une réponse `401`, appelle
+   `AuthTokenProvider.refresh()` (qui rafraîchit la session côté Supabase),
+   puis **rejoue la requête d'origine** avec le nouveau token via
+   `dio.fetch(retryOptions)` — sans que l'appelant original s'en aperçoive.
+   Un verrou (`_refreshing`) évite qu'un lot de requêtes en échec simultané
+   ne déclenche plusieurs rafraîchissements.
 
-Géré par le SDK `supabase_flutter` : la session (access token + refresh
-token) est automatiquement rafraîchie en arrière-plan par le client
-Supabase. `AuthRepository.watchUser()` s'abonne à
-`Supabase.auth.onAuthStateChange`, qui émet à chaque changement de session
-(connexion, déconnexion, refresh) — l'app n'a jamais à gérer l'expiration
-manuellement.
+`AuthTokenProvider` est une petite interface (pas directement le SDK
+Supabase) que `AuthInterceptor` consomme — `SupabaseAuthTokenProvider` est
+l'implémentation réelle, mais l'interface rend l'intercepteur testable
+avec un faux fournisseur de token sans jamais toucher au SDK
+(`test/core/network/auth_interceptor_test.dart`).
+
+TMDB n'a pas besoin de ce token (API publique par clé) et ne renvoie donc
+jamais de 401 dessus ; l'intercepteur est câblé au niveau du client Dio
+pour que n'importe quel futur appel à un backend authentifié (Edge
+Function Supabase, PostgREST direct...) hérite automatiquement du
+comportement, sans qu'aucun site d'appel n'ait à y penser.
 
 ### Cache & mode hors-ligne
 
@@ -130,9 +137,17 @@ Tests unitaires sur la couche repository (`test/features/**/data/`) :
 
 - `movie_repository_test.dart` — parsing des réponses TMDB, mise en cache,
   service depuis le cache hors-ligne, échec réseau sans cache, parsing du
-  détail (genres/durée).
+  détail (genres/durée), régression sur le round-trip Hive d'un film mis en
+  cache avec des genres imbriqués.
 - `saved_movies_repository_test.dart` — sauvegarde/suppression d'un film,
   round-trip Hive avec genres imbriqués.
+
+Tests sur l'intercepteur (`test/core/network/auth_interceptor_test.dart`) —
+exercés via une vraie instance `Dio` avec un adaptateur HTTP scripté (pas de
+mock du SDK Supabase) : en-tête `Authorization` posé quand connecté/absent
+quand déconnecté, refresh + rejeu automatique sur un `401`, échec du
+refresh remonté tel quel, et une erreur non-401 jamais transformée en
+tentative de refresh.
 
 Un test widget (`test/widget_test.dart`) vérifie que l'app démarre et
 affiche l'onglet Accueil sans exception.
